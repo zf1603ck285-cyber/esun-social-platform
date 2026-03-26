@@ -17,7 +17,6 @@ public class UserDao {
 
     public Map<String, Object> registerUserSP(String phone, String userName, String hashedPassword) {
 
-        // 放棄使用 SimpleJdbcCall，改用最底層、最直接的 jdbcTemplate.execute
         return jdbcTemplate.execute("{call sp_register_user(?, ?, ?, ?, ?)}", (CallableStatement cs) -> {
             
             // 1. 設定傳給 MySQL 的 3 個輸入參數 (IN)
@@ -29,7 +28,7 @@ public class UserDao {
             cs.registerOutParameter(4, Types.INTEGER); // 對應 p_status
             cs.registerOutParameter(5, Types.VARCHAR); // 對應 p_message
             
-            // 3. 執行預存程序！
+            // 3. 執行預存程序
             cs.execute();
             
             // 4. 把 MySQL 吐回來的結果打包成 Map 回傳給 Service
@@ -42,7 +41,6 @@ public class UserDao {
     public Map<String, Object> getUserByPhone(String phone) {
         String sql = "SELECT * FROM users WHERE phone = ?";
         try {
-            // 這裡我們直接用簡單的 queryForMap，因為只是單純查詢
             return jdbcTemplate.queryForMap(sql, phone);
         } catch (Exception e) {
             return null; // 找不到人

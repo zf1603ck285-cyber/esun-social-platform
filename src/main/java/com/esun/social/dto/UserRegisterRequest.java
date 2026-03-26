@@ -1,7 +1,6 @@
 package com.esun.social.dto;
 
 public class UserRegisterRequest {
-    // 註冊時，前端只需要傳這三個最重要的欄位給我們
     private String phone;
     private String userName;
     private String password;

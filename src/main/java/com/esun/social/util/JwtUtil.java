@@ -11,10 +11,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // 這是一把秘密鑰匙，用來簽名你的通行證（實務上會放在設定檔）
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
     
-    // 設定通行證有效時間（例如：24 小時）
     private final long expirationTime = 86400000; 
 
     public String generateToken(String phone, String userName) {

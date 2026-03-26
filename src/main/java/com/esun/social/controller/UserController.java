@@ -27,7 +27,6 @@ public class UserController {
             response.put("success", true);
             response.put("message", message);
         } catch (Exception e) {
-            // 保持良好的除錯習慣，印出堆疊訊息
             e.printStackTrace(); 
             response.put("success", false);
             response.put("message", e.getMessage());

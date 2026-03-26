@@ -12,7 +12,6 @@ public class User {
     private String biography;
     private LocalDateTime createdAt;
 
-    // --- 下面是 Getter 和 Setter (讓其他程式能讀取和修改這些資料) ---
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     

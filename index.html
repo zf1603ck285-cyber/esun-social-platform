@@ -15,7 +15,6 @@
         .post-actions button { font-size: 0.8em; padding: 4px 8px; margin-left: 5px; background: #e4e6eb; color: #1c1e21; border-radius: 4px;}
         .post-actions button:hover { background: #d8dadf; }
         
-        /* 💬 留言區專屬 CSS */
         .comments-list { margin-top: 15px; padding: 10px 15px; background-color: #f8f9fa; border-radius: 8px; }
         .comment-item { margin-bottom: 8px; font-size: 0.95em; padding-bottom: 8px; border-bottom: 1px dashed #dee2e6;}
         .comment-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
@@ -50,7 +49,7 @@
 
         <div v-else>
             <div style="overflow: hidden; margin-bottom: 20px;">
-                <span style="font-size: 1.2em; font-weight: bold;">歡迎回來！🎉</span>
+                <span style="font-size: 1.2em; font-weight: bold;">歡迎回來！</span>
                 <button @click="logout" class="logout-btn">登出</button>
             </div>
 
@@ -180,7 +179,6 @@
                     } catch (error) { alert("連線失敗：" + error.message); }
                 };
 
-                // 🌟 留言成功後，不再只是跳通知，而是直接重新整理畫面！
                 const addComment = async (post) => {
                     if (!post.newComment.trim()) return;
                     try {

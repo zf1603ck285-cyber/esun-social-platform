@@ -41,7 +41,6 @@ public class UserService {
         return message;
     }
 
-    // --- 登入邏輯 (請保留這個，刪除那個 return null 的) ---
     public String login(String phone, String rawPassword) throws Exception {
         // 1. 找人
         Map<String, Object> user = userDao.getUserByPhone(phone);
