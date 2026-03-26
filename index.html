@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玉山社群平台 (含留言板功能)</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; color: #1c1e21;}
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .post-card { border: 1px solid #e4e6eb; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #fff;}
+        .post-header { display: flex; justify-content: space-between; align-items: center; }
+        .post-time { color: #65676b; font-size: 0.85em; }
+        .post-actions button { font-size: 0.8em; padding: 4px 8px; margin-left: 5px; background: #e4e6eb; color: #1c1e21; border-radius: 4px;}
+        .post-actions button:hover { background: #d8dadf; }
+        
+        /* 💬 留言區專屬 CSS */
+        .comments-list { margin-top: 15px; padding: 10px 15px; background-color: #f8f9fa; border-radius: 8px; }
+        .comment-item { margin-bottom: 8px; font-size: 0.95em; padding-bottom: 8px; border-bottom: 1px dashed #dee2e6;}
+        .comment-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+        .comment-user { font-weight: bold; color: #008080; margin-right: 5px;}
+        
+        .comment-section { margin-top: 10px; display: flex;}
+        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background-color: #008080; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background-color: #006666; }
+        .toggle-link { color: #008080; cursor: pointer; text-decoration: underline; font-size: 0.9em; text-align: center; display: block; margin-top: 10px;}
+        .logout-btn { background-color: #dc3545; float: right; padding: 8px 15px;}
+        .danger-btn { background-color: #dc3545 !important; color: white !important; }
+        .danger-btn:hover { background-color: #c82333 !important; }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <h2 style="color: #008080; border-bottom: 2px solid #008080; padding-bottom: 10px;">🗻 玉山社群平台</h2>
+
+        <div v-if="!token">
+            <h3 style="text-align: center;">{{ isLoginMode ? '會員登入' : '註冊新帳號' }}</h3>
+            <input v-if="!isLoginMode" v-model="regUserName" type="text" placeholder="您的姓名 (例如: 王小明)" style="width: 100%;">
+            <input v-model="phone" type="text" placeholder="手機號碼 (例如: 0955444333)" style="width: 100%;">
+            <input v-model="password" type="password" placeholder="密碼" style="width: 100%;">
+            <button v-if="isLoginMode" @click="login" style="width: 100%; margin-top: 15px; font-size: 1.1em;">登入</button>
+            <button v-else @click="register" style="width: 100%; margin-top: 15px; font-size: 1.1em; background-color: #28a745;">註冊</button>
+            <p style="color: red; text-align: center; font-weight: bold;">{{ errorMessage }}</p>
+            <span class="toggle-link" @click="isLoginMode = !isLoginMode">
+                {{ isLoginMode ? '還沒有帳號？點我註冊' : '已經有帳號了？點我登入' }}
+            </span>
+        </div>
+
+        <div v-else>
+            <div style="overflow: hidden; margin-bottom: 20px;">
+                <span style="font-size: 1.2em; font-weight: bold;">歡迎回來！🎉</span>
+                <button @click="logout" class="logout-btn">登出</button>
+            </div>
+
+            <div style="background: #f0f2f5; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; gap: 10px;">
+                <input v-model="newPostContent" type="text" placeholder="在想些什麼呢？" style="flex: 1; margin: 0;">
+                <button @click="createPost" style="width: 80px; margin: 0;">發布</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>最新動態</h3>
+                <button @click="fetchPosts" style="font-size: 0.8em; padding: 5px 10px; background: #6c757d;">🔄 重新整理</button>
+            </div>
+            
+            <div v-if="posts.length === 0" style="color: gray; text-align: center; padding: 20px;">目前還沒有貼文喔，來當第一個發文的人吧！</div>
+            
+            <div v-for="post in posts" :key="post.post_id" class="post-card">
+                <div class="post-header">
+                    <div>
+                        <strong>{{ post.user_name }}</strong> 
+                        <span class="post-time"> • {{ new Date(post.created_at).toLocaleString() }}</span>
+                    </div>
+                    <div class="post-actions" v-if="!post.isEditing">
+                        <button @click="post.isEditing = true; post.editContent = post.content">✏️ 編輯</button>
+                        <button @click="deletePost(post.post_id)" class="danger-btn">🗑️ 刪除</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px; font-size: 1.1em; margin-bottom: 10px;">
+                    <template v-if="!post.isEditing">{{ post.content }}</template>
+                    <template v-else>
+                        <input v-model="post.editContent" type="text" style="width: 100%;">
+                        <div style="text-align: right; margin-top: 5px;">
+                            <button @click="post.isEditing = false" style="background: gray; padding: 5px 10px;">取消</button>
+                            <button @click="updatePost(post)" style="padding: 5px 10px; margin-left: 5px;">儲存</button>
+                        </div>
+                    </template>
+                </div>
+
+                <div v-if="post.comments && post.comments.length > 0" class="comments-list">
+                    <div v-for="comment in post.comments" :key="comment.comment_id" class="comment-item">
+                        <span class="comment-user">{{ comment.user_name }}</span>
+                        <span>{{ comment.content }}</span>
+                        <span class="post-time" style="font-size: 0.8em; margin-left: 8px;">
+                            ({{ new Date(comment.created_at).toLocaleString() }})
+                        </span>
+                    </div>
+                </div>
+
+                <div class="comment-section">
+                    <input v-model="post.newComment" @keyup.enter="addComment(post)" type="text" placeholder="留言回覆... (按 Enter 送出)" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9em;">
+                    <button @click="addComment(post)" style="margin: 0 0 0 10px; padding: 8px 15px; font-size: 0.9em;">留言</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const isLoginMode = ref(true);
+                const errorMessage = ref('');
+                const phone = ref('');
+                const password = ref('');
+                const regUserName = ref('');
+                const token = ref(localStorage.getItem('esun_token') || '');
+                const posts = ref([]);
+                const newPostContent = ref('');
+
+                axios.defaults.baseURL = 'http://localhost:8080/api';
+
+                const register = async () => {
+                    try {
+                        await axios.post('/users/register', { phone: phone.value, password: password.value, userName: regUserName.value });
+                        alert("註冊成功！請直接點擊登入。");
+                        isLoginMode.value = true;
+                        errorMessage.value = '';
+                    } catch (error) { errorMessage.value = error.response?.data?.message || '註冊失敗'; }
+                };
+
+                const login = async () => {
+                    try {
+                        const res = await axios.post('/users/login', { phone: phone.value, password: password.value });
+                        if (res.data.success) {
+                            token.value = res.data.token;
+                            localStorage.setItem('esun_token', token.value);
+                            errorMessage.value = '';
+                            fetchPosts();
+                        } else { errorMessage.value = res.data.message || '登入失敗'; }
+                    } catch (error) { errorMessage.value = '登入失敗，請確認伺服器狀態。'; }
+                };
+
+                const logout = () => { token.value = ''; localStorage.removeItem('esun_token'); posts.value = []; };
+
+                const fetchPosts = async () => {
+                    try {
+                        const res = await axios.get('/posts');
+                        // 從後端拿到的資料現在已經包含 comments 屬性了！
+                        posts.value = res.data.map(p => ({ ...p, isEditing: false, editContent: '', newComment: '' }));
+                    } catch (error) { console.error("抓取貼文失敗", error); }
+                };
+
+                const createPost = async () => {
+                    if (!newPostContent.value.trim()) return;
+                    try {
+                        const res = await axios.post('/posts', { content: newPostContent.value }, { headers: { 'Authorization': `Bearer ${token.value}` } });
+                        if (res.data.success) { newPostContent.value = ''; fetchPosts(); } 
+                        else { alert("發文失敗：" + res.data.message); }
+                    } catch (error) { alert("發文失敗！"); }
+                };
+
+                const updatePost = async (post) => {
+                    try {
+                        const res = await axios.put(`/posts/${post.post_id}`, { content: post.editContent }, { headers: { 'Authorization': `Bearer ${token.value}` } });
+                        if (res.data.success) { post.isEditing = false; fetchPosts(); } 
+                        else { alert("⚠️ 警告：" + res.data.message); post.isEditing = false; }
+                    } catch (error) { alert("連線失敗：" + error.message); post.isEditing = false; }
+                };
+
+                const deletePost = async (id) => {
+                    if (!confirm("確定要刪除這篇貼文嗎？(底下的留言也會一併刪除喔！)")) return;
+                    try {
+                        const res = await axios.delete(`/posts/${id}`, { headers: { 'Authorization': `Bearer ${token.value}` } });
+                        if (res.data.success) { fetchPosts(); } 
+                        else { alert("🚫 權限不足：" + res.data.message); }
+                    } catch (error) { alert("連線失敗：" + error.message); }
+                };
+
+                // 🌟 留言成功後，不再只是跳通知，而是直接重新整理畫面！
+                const addComment = async (post) => {
+                    if (!post.newComment.trim()) return;
+                    try {
+                        const res = await axios.post(`/posts/${post.post_id}/comments`, { content: post.newComment }, { headers: { 'Authorization': `Bearer ${token.value}` } });
+                        if (res.data.success) {
+                            post.newComment = '';
+                            fetchPosts(); // 新增這一行：留言成功後自動抓取最新資料！
+                        } else { alert("留言失敗：" + res.data.message); }
+                    } catch (error) { alert("留言失敗！"); }
+                };
+
+                onMounted(() => { if (token.value) fetchPosts(); });
+
+                return {
+                    isLoginMode, errorMessage, phone, password, regUserName, token, posts, newPostContent,
+                    register, login, logout, fetchPosts, createPost, updatePost, deletePost, addComment
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
